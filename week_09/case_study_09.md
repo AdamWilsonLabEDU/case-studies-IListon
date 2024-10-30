@@ -1,13 +1,11 @@
----
-title: "Case Study 09"
-author: Isabel Liston
-date: October 31,2024
-output: github_document
----
+Case Study 09
+================
+Isabel Liston
+Today
 
 Load packages
 
-```{r, warning = FALSE, message = FALSE}
+``` r
 library(sf)
 library(tidyverse)
 library(ggmap)
@@ -18,7 +16,7 @@ data(us_states)
 
 Get hurricane data from NOAA
 
-```{r, warning = FALSE, message = FALSE}
+``` r
 dataurl="https://www.ncei.noaa.gov/data/international-best-track-archive-for-climate-stewardship-ibtracs/v04r01/access/csv/ibtracs.NA.list.v04r01.csv"
 
 storm_data <- read_csv(dataurl)
@@ -26,21 +24,23 @@ storm_data <- read_csv(dataurl)
 
 Clean up data
 
-```{r, warning = FALSE, message = FALSE}
+``` r
 storm_data_yr <- storm_data %>%
                   mutate(Year = year(ISO_TIME)) %>%
                   relocate(Year, .after = ISO_TIME)
 
 storm_data_post_1950 <- storm_data_yr %>%
-                        filter(Year >= 1950) %>%
-                        mutate_if(is.numeric, 
-                                function(x)ifelse(x==-999.0,NA,x))
-                      
-storm_data_post_1950_dec <- storm_data_post_1950 %>%
-                            mutate(Decade=(floor(Year/10)*10)) %>%
-                            relocate(Decade, .after = Year)
+                          filter(Year >= 1950)
 
-spat_storm_data <- storm_data_post_1950_dec %>%
+stmdat_post_1950 <- storm_data_post_1950 %>%
+                      mutate_if(is.numeric, 
+                                function(x)ifelse(x==-999.0,NA,x))
+
+stmdat_post1950_dec <- stmdat_post_1950 %>%
+                        mutate(Decade=(floor(Year/10)*10)) %>%
+                        relocate(Decade, .after = Year)
+
+spat_stmdata <- stmdat_post1950_dec %>%
                   st_as_sf(coords=c("LON","LAT"),crs=4326)
 
 region <- spat_stmdata %>%
@@ -49,12 +49,12 @@ region <- spat_stmdata %>%
 
 Plot data
 
-```{r, warning = FALSE, message = FALSE}
+``` r
  ggplot(world)+
   geom_sf()+
   facet_wrap(~Decade)+
-  stat_bin2d(data=spat_storm_data,aes(y=st_coordinates(spat_storm_data)[,2],
-                              x=st_coordinates(spat_storm_data)[,1]), 
+  stat_bin2d(data=spat_stmdata,aes(y=st_coordinates(spat_stmdata)[,2],
+                              x=st_coordinates(spat_stmdata)[,1]), 
                               bins=100)+
   scale_fill_distiller(palette="YlOrRd", trans="log", direction=-1, 
                        breaks = c(1,10,100,1000))+
@@ -62,10 +62,12 @@ Plot data
   labs(x = NULL, y = NULL)
 ```
 
+![](case_study_09_files/figure-gfm/unnamed-chunk-4-1.png)<!-- -->
+
 Display the 5 states that have experienced the most hurricanes
 
-```{r, warning = FALSE, message = FALSE}
-storms_CRS <- st_crs(spat_storm_data) 
+``` r
+storms_CRS <- st_crs(spat_stmdata) 
 
 us_states_reproj <- st_transform(us_states, crs = storms_CRS)
 
@@ -77,10 +79,18 @@ storm_states <- st_join(spat_stmdata, us_states_reproj_statename,
 
 storm_by_state <- storm_states %>%
                   group_by(State) %>%
-                  summarize(Storms=length(unique(NAME))) %>%
-                  arrange(desc(Storms)) %>%
+                  summarize(storms=length(unique(NAME))) %>%
+                  arrange(desc(storms)) %>%
                   slice(1:5) %>%
                   st_set_geometry(NULL)
 
 knitr::kable(head(storm_by_state))
 ```
+
+| State          | storms |
+|:---------------|-------:|
+| Florida        |     89 |
+| North Carolina |     67 |
+| Georgia        |     61 |
+| Texas          |     56 |
+| Louisiana      |     53 |
