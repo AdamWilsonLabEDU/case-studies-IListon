@@ -7,7 +7,7 @@ output: html_document
 
 ## Load Libraries
 
-```{r, warnings = FALSE, messages = FALSE}
+```{r, warning = FALSE, message = FALSE}
 library(tidyverse)
 library(htmlwidgets)
 library(widgetframe)
@@ -18,7 +18,7 @@ library(openmeteo)
 
 ## Load temperature data
 
-```{r, warnings = FALSE, messages = FALSE}
+```{r, warning = FALSE, message = FALSE}
 d<- weather_history(c(43.00923265935055, -78.78494250958327),start = "2023-01-01",end=today(),
                   daily=list("temperature_2m_max","temperature_2m_min","precipitation_sum")) %>% 
   mutate(daily_temperature_2m_mean=(daily_temperature_2m_max+daily_temperature_2m_min)/2)
@@ -26,7 +26,7 @@ d<- weather_history(c(43.00923265935055, -78.78494250958327),start = "2023-01-01
 
 ## Convert data
 
-```{r, warnings = FALSE, messages = FALSE}
+```{r, warning = FALSE, message = FALSE}
 temp_data <- select(d, contains("daily_temperature_2m")) %>%
               xts(order.by = d$date)
 percip_data <- select(d, contains("sum")) %>%
@@ -35,7 +35,7 @@ percip_data <- select(d, contains("sum")) %>%
 
 ## Make dygraph
 
-```{r, warnings = FALSE, messages = FALSE}
+```{r, warning = FALSE, message = FALSE}
 dygraph(data = temp_data, 
                 main="Daily Maximum Temperature in Buffalo, NY", 
                 group = "temp_percip") %>%
