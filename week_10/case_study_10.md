@@ -1,12 +1,11 @@
----
-title: "Case Study 10"
-author: Isabel Liston
-date: November 8, 2024
-output: github_document
----
+Case Study 10
+================
+Isabel Liston
+November 8, 2024
 
 Load libraries
-```{r, warning = FALSE, message= FALSE}
+
+``` r
 library(terra)
 #install.packages("rasterVis")
 library(rasterVis)
@@ -18,7 +17,8 @@ library(ncdf4)
 ```
 
 Create a data folder and download the lulc data and the lst data
-```{r, warning = FALSE, message= FALSE}
+
+``` r
 dir.create("data",showWarnings = F)
 
 lulc_url="https://github.com/adammwilson/DataScienceData/blob/master/inst/extdata/appeears/MCD12Q1.051_aid0001.nc?raw=true"
@@ -27,25 +27,33 @@ lst_url="https://github.com/adammwilson/DataScienceData/blob/master/inst/extdata
 download.file(lulc_url,destfile="data/MCD12Q1.051_aid0001.nc", mode="wb")
 download.file(lst_url,destfile="data/MOD11A2.006_aid0001.nc", mode="wb")
 ```
+
 Add the downloaded data into R
-```{r, warning = FALSE, message= FALSE}
+
+``` r
 lulc=rast("data/MCD12Q1.051_aid0001.nc",subds="Land_Cover_Type_1")
 lst=rast("data/MOD11A2.006_aid0001.nc",subds="LST_Day_1km")
 ```
 
 Plot the lulc data
-```{r, warning = FALSE, message= FALSE}
+
+``` r
 plot(lulc)
 ```
 
-```{r, warning = FALSE, message = FALSE}
+![](case_study_10_files/figure-gfm/unnamed-chunk-4-1.png)<!-- -->
+
+``` r
 #limit data to 2013 
 lulc_13=lulc[[13]]
 plot(lulc_13)
 ```
 
+![](case_study_10_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
+
 Assign the landcover classes
-```{r, warning = FALSE, message= FALSE}
+
+``` r
  Land_Cover_Type_1 = c(
     Water = 0, 
     `Evergreen Needleleaf forest` = 1, 
@@ -78,8 +86,18 @@ lcd=data.frame(
 kable(head(lcd))
 ```
 
+|                             |  ID | landcover                   | col      |
+|:----------------------------|----:|:----------------------------|:---------|
+| Water                       |   0 | Water                       | \#000080 |
+| Evergreen Needleleaf forest |   1 | Evergreen Needleleaf forest | \#008000 |
+| Evergreen Broadleaf forest  |   2 | Evergreen Broadleaf forest  | \#00FF00 |
+| Deciduous Needleleaf forest |   3 | Deciduous Needleleaf forest | \#99CC00 |
+| Deciduous Broadleaf forest  |   4 | Deciduous Broadleaf forest  | \#99FF99 |
+| Mixed forest                |   5 | Mixed forest                | \#339966 |
+
 Convert lulc raster to a factorial raster
-```{r, warning = FALSE, message= FALSE}
+
+``` r
 # convert to raster 
 lulc=as.factor(lulc)
 
@@ -89,7 +107,8 @@ activeCat(lulc)=1
 ```
 
 Plot lulc factorial raster
-```{r, warning = FALSE, message= FALSE}
+
+``` r
 gplot(lulc)+
   geom_raster(aes(fill=as.factor(value)))+
   scale_fill_manual(values=setNames(lcd$col,lcd$ID),
@@ -101,13 +120,18 @@ gplot(lulc)+
   guides(fill=guide_legend(ncol=1,byrow=TRUE))
 ```
 
+![](case_study_10_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
+
 Convert land surface temperature to degrees C
-```{r, warning = FALSE, message = FALSE}
+
+``` r
 #plot original data
 plot(lst[[1:12]])
 ```
 
-```{r, warning = FALSE, message = FALSE}
+![](case_study_10_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
+
+``` r
 #convert from Kelvin to degrees C
 scoff(lst)=cbind(0.02,-273.15)
 
@@ -115,8 +139,11 @@ scoff(lst)=cbind(0.02,-273.15)
 plot(lst[[1:10]])
 ```
 
+![](case_study_10_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
+
 Extract the lst for a point and plot the time series
-```{r, warning = FALSE, message = FALSE}
+
+``` r
 #define a new sf point
 lw= data.frame(x= -78.791547,y=43.007211) %>% st_as_sf(coords=c("x","y"),crs=4326)
 
@@ -143,8 +170,11 @@ ggplot(lst_dates, aes(x = Date, y = LST)) +
   labs(title = "LST Timeseries")
 ```
 
+![](case_study_10_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
+
 Calculate the monthly average surface temperature
-```{r, warning = FALSE, message= FALSE}
+
+``` r
 #summarize the mean value per month
 lst_month <- tapp(lst, index = "month", fun = "mean", na.rm = TRUE)
 names(lst_month) <- month.name[as.numeric(str_replace(names(lst_month),"m_",""))]
@@ -158,14 +188,32 @@ gplot(lst_month) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 ```
 
-```{r, warnings = FALSE, message= FALSE}
+![](case_study_10_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
+
+``` r
 #calculate the monthly mean for the whole image
 monthly_mean_img <- global(lst_month,mean,na.rm=T)
 kable(monthly_mean_img)
 ```
 
+|           |      mean |
+|:----------|----------:|
+| February  | -2.127506 |
+| March     |  8.710271 |
+| April     | 18.172077 |
+| May       | 23.173591 |
+| June      | 26.990005 |
+| July      | 28.840144 |
+| August    | 27.358260 |
+| September | 22.927727 |
+| October   | 15.477510 |
+| November  |  8.329881 |
+| December  |  0.586179 |
+| January   | -4.754134 |
+
 Summarize land surface temperature by land cover
-```{r, warning = FALSE, message= FALSE}
+
+``` r
 #resample lulc to the lst grid
 lulc2 <- resample(lulc, lst, method = "near")
 
@@ -204,3 +252,5 @@ ggplot()+
        y = "Monthly Mean LST (C)")+
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 ```
+
+![](case_study_10_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->

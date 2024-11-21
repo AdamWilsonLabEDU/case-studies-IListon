@@ -1,71 +1,58 @@
----
-title: "Case Study 10"
-author: Isabel Liston
-date: November 8, 2024
-output: github_document
----
 
-Load libraries
-```{r, warning = FALSE, message= FALSE}
+#load packages
+library(raster)
 library(terra)
-#install.packages("rasterVis")
 library(rasterVis)
 library(ggmap)
 library(tidyverse)
 library(knitr)
 library(sf)
 library(ncdf4)
-```
 
-Create a data folder and download the lulc data and the lst data
-```{r, warning = FALSE, message= FALSE}
-dir.create("data",showWarnings = F)
+#create a folder to hold the data
+dir.create("data",showWarnings = F) 
 
+#download data
 lulc_url="https://github.com/adammwilson/DataScienceData/blob/master/inst/extdata/appeears/MCD12Q1.051_aid0001.nc?raw=true"
 lst_url="https://github.com/adammwilson/DataScienceData/blob/master/inst/extdata/appeears/MOD11A2.006_aid0001.nc?raw=true"
 
 download.file(lulc_url,destfile="data/MCD12Q1.051_aid0001.nc", mode="wb")
 download.file(lst_url,destfile="data/MOD11A2.006_aid0001.nc", mode="wb")
-```
-Add the downloaded data into R
-```{r, warning = FALSE, message= FALSE}
+
+#load data into R
 lulc=rast("data/MCD12Q1.051_aid0001.nc",subds="Land_Cover_Type_1")
 lst=rast("data/MOD11A2.006_aid0001.nc",subds="LST_Day_1km")
-```
 
-Plot the lulc data
-```{r, warning = FALSE, message= FALSE}
+#explore lulc data
 plot(lulc)
-```
 
-```{r, warning = FALSE, message = FALSE}
-#limit data to 2013 
-lulc_13=lulc[[13]]
-plot(lulc_13)
-```
+#limit lulc data to 2013
+lulc=lulc[[13]]
+plot(lulc)
 
-Assign the landcover classes
-```{r, warning = FALSE, message= FALSE}
- Land_Cover_Type_1 = c(
-    Water = 0, 
-    `Evergreen Needleleaf forest` = 1, 
-    `Evergreen Broadleaf forest` = 2,
-    `Deciduous Needleleaf forest` = 3, 
-    `Deciduous Broadleaf forest` = 4,
-    `Mixed forest` = 5, 
-    `Closed shrublands` = 6,
-    `Open shrublands` = 7,
-    `Woody savannas` = 8, 
-    Savannas = 9,
-    Grasslands = 10,
-    `Permanent wetlands` = 11, 
-    Croplands = 12,
-    `Urban & built-up` = 13,
-    `Cropland/Natural vegetation mosaic` = 14, 
-    `Snow & ice` = 15,
-    `Barren/Sparsely vegetated` = 16, 
-    Unclassified = 254,
-    NoDataFill = 255)
+#process land cover data
+
+#assign land cover classes from MODIS website
+Land_Cover_Type_1 = c(
+  Water = 0, 
+  `Evergreen Needleleaf forest` = 1, 
+  `Evergreen Broadleaf forest` = 2,
+  `Deciduous Needleleaf forest` = 3, 
+  `Deciduous Broadleaf forest` = 4,
+  `Mixed forest` = 5, 
+  `Closed shrublands` = 6,
+  `Open shrublands` = 7,
+  `Woody savannas` = 8, 
+  Savannas = 9,
+  Grasslands = 10,
+  `Permanent wetlands` = 11, 
+  Croplands = 12,
+  `Urban & built-up` = 13,
+  `Cropland/Natural vegetation mosaic` = 14, 
+  `Snow & ice` = 15,
+  `Barren/Sparsely vegetated` = 16, 
+  Unclassified = 254,
+  NoDataFill = 255)
 
 lcd=data.frame(
   ID=Land_Cover_Type_1,
@@ -75,21 +62,19 @@ lcd=data.frame(
         "#808080", "#000000", "#000000"),
   stringsAsFactors = F)
 # colors from https://lpdaac.usgs.gov/about/news_archive/modisterra_land_cover_types_yearly_l3_global_005deg_cmg_mod12c1
-kable(head(lcd))
-```
 
-Convert lulc raster to a factorial raster
-```{r, warning = FALSE, message= FALSE}
-# convert to raster 
+kable(head(lcd))
+
+#convert LULC raster into a 'factor' (categorical) raster
+
+#convert to raster
 lulc=as.factor(lulc)
 
-# update the RAT with a left join
+#update the RAT with a left join
 levels(lulc)=left_join(levels(lulc)[[1]],lcd)[-1,]
 activeCat(lulc)=1
-```
 
-Plot lulc factorial raster
-```{r, warning = FALSE, message= FALSE}
+#plot categorical raster
 gplot(lulc)+
   geom_raster(aes(fill=as.factor(value)))+
   scale_fill_manual(values=setNames(lcd$col,lcd$ID),
@@ -99,86 +84,64 @@ gplot(lulc)+
   coord_equal()+
   theme(legend.position = "right")+
   guides(fill=guide_legend(ncol=1,byrow=TRUE))
-```
 
-Convert land surface temperature to degrees C
-```{r, warning = FALSE, message = FALSE}
-#plot original data
-plot(lst[[1:12]])
-```
-
-```{r, warning = FALSE, message = FALSE}
-#convert from Kelvin to degrees C
+#convert LST to Degrees C 
 scoff(lst)=cbind(0.02,-273.15)
-
-#plot converted data
 plot(lst[[1:10]])
-```
 
-Extract the lst for a point and plot the time series
-```{r, warning = FALSE, message = FALSE}
-#define a new sf point
+#extract LST values for a single point and plot them
 lw= data.frame(x= -78.791547,y=43.007211) %>% st_as_sf(coords=c("x","y"),crs=4326)
 
-#transform the point to the projection of the raster 
+#convert point to raster projection 
 lst_crs <- st_crs(lst)
 lw_trans <- st_transform(lw, crs = lst_crs)
 
-#extract the data for the transformed point
-lst_point <- terra::extract(lst,lw_trans, buffer=1000,fun=mean,na.rm=TRUE)
-lst_point2 <- lst_point[-1]
-
+#extract the LSt for that point
+lst_point <- terra::extract(lst,lw,buffer=1000,fun=mean,na.rm=T)
+lst_point2 <- lst_point[,-1]
 lst_point3 <- t(lst_point2)
 
 #extract the dates for each layer
 dates <- time(lst)
 
-#combine the data frame and the dates
+#combine the lst data and the dates
 lst_dates <- cbind.data.frame(Date = dates, LST = lst_point3)
 
 #plot the time series
 ggplot(lst_dates, aes(x = Date, y = LST)) +
   geom_point() +
-  stat_smooth(span = 0.05, n = 811)+
-  labs(title = "LST Timeseries")
-```
+  stat_smooth(span = 0.05, n = 811)
 
-Calculate the monthly average surface temperature
-```{r, warning = FALSE, message= FALSE}
-#summarize the mean value per month
+#summarize weekly data to monthly climatologies
 lst_month <- tapp(lst, index = "month", fun = "mean", na.rm = TRUE)
-names(lst_month) <- month.name[as.numeric(str_replace(names(lst_month),"m_",""))]
+names(lst_month)=month.name[as.numeric(str_replace(names(lst_month),"m_",""))]
 
-#plot the monthly averages
-gplot(lst_month) +
-  geom_tile(aes(fill = value)) +
-  facet_wrap(~variable) +
-  scale_fill_gradient(low =  "blue", high = "red")+
-   labs(title = "Mean Monthly LST")+
+#plot the mean for each month
+gplot(lst_month) + geom_tile(aes(fill = value)) +
+  facet_wrap(~ variable) +
+  scale_fill_gradient(low = 'blue', high = 'red')+
+  labs(title = "Mean Monthly LST")+
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
-```
 
-```{r, warnings = FALSE, message= FALSE}
 #calculate the monthly mean for the whole image
 monthly_mean_img <- global(lst_month,mean,na.rm=T)
 kable(monthly_mean_img)
-```
 
-Summarize land surface temperature by land cover
-```{r, warning = FALSE, message= FALSE}
+#summarize LST by Land Cover
+
 #resample lulc to the lst grid
 lulc2 <- resample(lulc, lst, method = "near")
 
 #combine values from lulc2 and lst
 lcds1 <- cbind.data.frame(values(lst_month),ID=values(lulc2[[1]]))%>%
-                          na.omit()
+  na.omit()
 tidy_lcds <- lcds1 %>%
-  gather(key='month',value='value',-Land_Cover_Type_1_1)
+  gather(key='month',value='value',-Land_Cover_Type_1_13)
 
 #convert ID to numeric and month to ordered factor
 tidy_lcds2 <- tidy_lcds %>%
-                mutate(ID=as.numeric(Land_Cover_Type_1_1), 
-                       month = factor(month,levels=month.name,ordered=T))
+  mutate(ID=as.numeric(Land_Cover_Type_1_13), 
+         month = factor(month,levels=month.name,ordered=T))
 
 #join with the lcd table from beginning
 tidy_lcds_joined <- tidy_lcds2 %>%
@@ -186,9 +149,11 @@ tidy_lcds_joined <- tidy_lcds2 %>%
 
 #filter for "Urban & built-up" and "Deciduous Broadleaf forest" 
 tidy_lcds_filtered <- tidy_lcds_joined %>%
-                        filter(landcover%in%c("Urban & built-up",
-                                              "Deciduous Broadleaf forest"))
+  filter(landcover%in%c("Urban & built-up",
+                        "Deciduous Broadleaf forest"))
+
 #plot to illustrate the variability in LST between land cover types
+
 ggplot()+
   geom_point(data = tidy_lcds_filtered, 
              aes(x = month, y = value), 
@@ -197,10 +162,13 @@ ggplot()+
               aes(x = month, y = value), 
               alpha = 0.5,
               color = "red",
-              linewidth = 0.75)+
+              size = 0.75)+
   facet_wrap(~landcover)+
   labs(title = "LST for Deciduous Forest and Urban Areas",
        x = "Month",
        y = "Monthly Mean LST (C)")+
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
-```
+  
+  
+  
+  

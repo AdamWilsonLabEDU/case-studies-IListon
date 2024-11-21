@@ -1,7 +1,52 @@
 ---
 title: "Case Study 12"
-author: Your Name
-date: August 1, 2020
-output: github_document
+author: Isabel Liston
+date: November 19, 2024
+output: html_document
 ---
- 
+
+## Load Libraries
+
+```{r, warning = FALSE, message = FALSE}
+library(tidyverse)
+library(htmlwidgets)
+library(widgetframe)
+library(xts)
+library(dygraphs)
+library(openmeteo)
+```
+
+## Load temperature data
+
+```{r, warning = FALSE, message = FALSE}
+d<- weather_history(c(43.00923265935055, -78.78494250958327),start = "2023-01-01",end=today(),
+                  daily=list("temperature_2m_max","temperature_2m_min","precipitation_sum")) %>% 
+  mutate(daily_temperature_2m_mean=(daily_temperature_2m_max+daily_temperature_2m_min)/2)
+```
+
+## Convert data
+
+```{r, warning = FALSE, message = FALSE}
+temp_data <- select(d, contains("daily_temperature_2m")) %>%
+              xts(order.by = d$date)
+percip_data <- select(d, contains("sum")) %>%
+                xts(order.by = d$date)
+```
+
+## Make dygraph
+
+```{r, warning = FALSE, message = FALSE}
+dygraph(data = temp_data, 
+                main="Daily Maximum Temperature in Buffalo, NY", 
+                group = "temp_percip") %>%
+  dySeries("daily_temperature_2m_max") %>%
+  dySeries("daily_temperature_2m_mean") %>%
+  dySeries("daily_temperature_2m_min") %>% 
+  dySeries(c("daily_temperature_2m_min",
+            "daily_temperature_2m_mean", 
+            "daily_temperature_2m_max")) %>%
+  dyRangeSelector(c("2023-01-01", "2024-10-31"))
+dygraph(percip_data, main = "Total Daily Percipitation", 
+        group = "temp_percip") %>%
+                    dyRangeSelector(c("2023-01-01", "2024-10-31"))
+```
